@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FCFS Scheduling with I/O</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+          background-color: #1b1b1b;
+          color: white;
+        }
+      
+        h2 {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 2.5rem;
+          background: linear-gradient(90deg, #ae00ff, #ff0066, #00ffff);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: rainbowFlow 5s linear infinite;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+        }
+      
+        @keyframes rainbowFlow {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 100% 50%; }
+        }
+      
+        .process-card {
+          background-color: #2c2c2c;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 0 12px rgba(238, 21, 94, 0.1);
+          margin-bottom: 20px;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+      
+        .process-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 0px 20px rgba(223, 212, 216, 0.5);
+        }
+      
+        .io-section {
+          background-color: #3b3b3b;
+          border-radius: 8px;
+          padding: 12px;
+          margin-top: 12px;
+        }
+      
+        .btn-primary,
+        .btn-pink {
+          background-color: #e91e63;
+          border: none;
+          color: white;
+          transition: background-color 0.3s ease;
+        }
+      
+        .btn-primary:hover,
+        .btn-pink:hover {
+          background-color: #d81b60;
+        }
+      
+        .form-label {
+          font-weight: bold;
+          color: #ffffff;
+        }
+      
+        .form-control {
+          background-color: #2f2f2f;
+          color: white;
+          border: 1px solid #555;
+        }
+      
+        .form-control:focus {
+          background-color: #2f2f2f;
+          color: white;
+          border-color: #e91e63;
+          box-shadow: 0 0 0 0.2rem rgba(233, 30, 99, 0.25);
+        }
+      
+        .results-table {
+          background-color: #2a2a2a;
+          color: white;
+          border-radius: 10px;
+          overflow: hidden;
+          margin-top: 30px;
+        }
+      
+        .results-table th,
+        .results-table td {
+          padding: 12px;
+          text-align: center;
+          border: 1px solid #444;
+        }
+      
+        .error-message {
+          color: #ff6b81;
+          display: none;
+          font-size: 0.9rem;
+          margin-top: 5px;
+        }
+
+        
+      </style>
+</head>
+<body class="container mt-4">
+    <h2 class="text-center mb-4">FCFS Scheduling with I/O</h2>
+
+    <form action="/fcfs" method="post" id="fcfsForm" onsubmit="return validateFCFSForm()">
+        <div class="mb-3">
+            <label for="num_processes" class="form-label">Number of Processes:</label>
+            <input type="number" id="num_processes" name="num_processes" class="form-control" min="1" required>
+            <div id="num_processes_error" class="error-message">Please enter a valid number of processes (1 or more)</div>
+            <button type="button" class="btn btn-primary mt-2" onclick="generateFCFSFields()">Next</button>
+        </div>
+
+        <div id="processContainer"></div>
+
+        <button type="submit" class="btn btn-success mt-3">Run Scheduling</button>
+    </form>
+
+
+    {% if results %}
+    <div class="results-table">
+        <h3 class="mt-5 mb-3">Scheduling Results</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Process ID</th>
+                        <th>Arrival Time</th>
+                        <th>Burst Time</th>
+                        <th>Completion Time</th>
+                        <th>Turnaround Time</th>
+                        <th>Waiting Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in results %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[3] }}</td>
+                        <td>{{ row[4] }}</td>
+                        <td>{{ row[5] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if gantt %}
+    <h3 class="mt-4">Gantt Chart:</h3>
+    <div class="d-flex align-items-center">
+        {% for start, end, pid in gantt %}
+            <div class="border p-2 text-center mx-1" style="min-width: 60px;">
+                P{{ pid }}<br>
+                <small>{{ start }} - {{ end }}</small>
+            </div>
+        {% endfor %}
+    </div>
+  {% endif %}
+
+
+
+    <script>
+        function generateFCFSFields() {
+            const num = parseInt(document.getElementById('num_processes').value);
+            const container = document.getElementById('processContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < num; i++) {
+                const card = document.createElement('div');
+                card.className = 'process-card p-3 border';
+
+                card.innerHTML = `
+                    <h5>Process ${i + 1}</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Arrival Time:</label>
+                        <input type="number" class="form-control" name="arrival_time_${i}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Burst Time:</label>
+                        <input type="number" class="form-control" name="burst_time_${i}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Number of I/O Requests:</label>
+                        <input type="number" class="form-control" name="io_count_${i}" id="io_count_${i}" min="0" value="0" onchange="generateIOFields(${i})">
+                    </div>
+                    <div id="io_fields_${i}" class="io-section"></div>
+                `;
+
+                container.appendChild(card);
+            }
+        }
+
+        function generateIOFields(processIndex) {
+            const count = parseInt(document.getElementById(`io_count_${processIndex}`).value);
+            const ioContainer = document.getElementById(`io_fields_${processIndex}`);
+            ioContainer.innerHTML = '';
+
+            for (let j = 0; j < count; j++) {
+                const ioBlock = document.createElement('div');
+                ioBlock.className = 'mb-2';
+                ioBlock.innerHTML = `
+                    <label class="form-label">I/O ${j + 1} - Trigger Time:</label>
+                    <input type="number" class="form-control mb-1" name="io_trigger_${processIndex}_${j}" required>
+                    <label class="form-label">I/O ${j + 1} - Wait Time:</label>
+                    <input type="number" class="form-control" name="io_wait_${processIndex}_${j}" required>
+                `;
+                ioContainer.appendChild(ioBlock);
+            }
+        }
+
+        function validateFCFSForm() {
+            const num = parseInt(document.getElementById('num_processes').value);
+            if (isNaN(num) || num < 1) {
+                document.getElementById('num_processes_error').style.display = 'block';
+                return false;
+            }
+            document.getElementById('num_processes_error').style.display = 'none';
+            return true;
+        }
+    </script>
+</body>
+</html>
