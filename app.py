@@ -64,7 +64,7 @@ def fcfs():
         results, gantt_chart = fcfs_with_io(processes)  # Updated to return gantt_chart
         return render_template("fcfs.html", results=results, gantt=gantt_chart)
 
-    return render_template("fcfs.html", results=None, gantt=None)
+    return render_template("Fcfs.html", results=None, gantt=None)
 
 
 # SJF
